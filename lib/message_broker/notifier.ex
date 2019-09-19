@@ -10,39 +10,37 @@ defmodule MessageBroker.Notifier do
 
   @channel "event_created"
 
-  def start_link(configs) do
-    GenServer.start_link(__MODULE__, configs, name: __MODULE__)
+  def start_link(opts \\ []) do
+    GenServer.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
-  def listen(event_name, repo) do
-    with {:ok, pid} <- Notifications.start_link(repo.config()),
+  def listen(event_name) do
+    with {:ok, pid} <- Notifications.start_link(repo()),
          {:ok, ref} <- Notifications.listen(pid, event_name) do
       {:ok, pid, ref}
     end
   end
 
   @impl GenServer
-  def init(configs) do
-    with {:ok, _pid, _ref} <- listen(@channel, configs.repo) do
-      {:ok, configs}
+  def init(opts) do
+    with {:ok, _pid, _ref} <- listen(@channel) do
+      {:ok, opts}
     else
       error -> {:stop, error}
     end
   end
 
   @impl GenServer
-  def handle_info({:notification, _pid, _ref, @channel, payload}, config) do
+  def handle_info({:notification, _pid, _ref, @channel, payload}, _) do
     with {:ok, %{"record" => %{"id" => id}}} <- Jason.decode(payload),
-         event <- get_event!(id, config.repo) do
+         event <- get_event!(id) do
       Logger.info("Processing message broker event: #{inspect(event)}")
 
       {:ok, _changes} =
         Multi.new()
         |> Multi.delete(:delete_event, event)
-        |> Multi.run(:publish_message, fn _repo, _changes ->
-          publish_event(event)
-        end)
-        |> config.repo.transaction()
+        |> Multi.run(:publish_message, fn _, _ -> publish_event(event) end)
+        |> repo().transaction()
 
       {:noreply, :event_handled}
     else
@@ -50,7 +48,9 @@ defmodule MessageBroker.Notifier do
     end
   end
 
-  def handle_info(_, _state), do: {:noreply, :event_received}
+  def handle_info(_, _) do
+    {:noreply, :event_received}
+  end
 
   defp publish_event(%Event{event_name: event_name, payload: payload}) do
     event = %{
@@ -67,5 +67,7 @@ defmodule MessageBroker.Notifier do
     DateTime.to_iso8601(dt, :extended)
   end
 
-  defp get_event!(id, repo), do: repo.get!(Event, id)
+  defp get_event!(id), do: repo().get!(Event, id)
+
+  defp repo, do: MessageBroker.config().repo
 end
