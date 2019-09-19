@@ -1,9 +1,0 @@
-{application,message_broker,
-             [{applications,[kernel,stdlib,elixir,logger,jason,postgrex,
-                             ecto_sql]},
-              {description,"message_broker"},
-              {modules,['Elixir.MessageBroker','Elixir.MessageBroker.Event',
-                        'Elixir.MessageBroker.EventBuilder',
-                        'Elixir.MessageBroker.Notifier']},
-              {registered,[]},
-              {vsn,"0.1.0"}]}.
