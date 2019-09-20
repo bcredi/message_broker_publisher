@@ -1,10 +1,19 @@
 defmodule MessageBroker.Notifier do
+  @moduledoc """
+  Event Notifier.
+
+  This is a GenServer that listen to Postgres Notifications and call the `Publisher`.
+  Every `%Event{}` persisted to the database will be published by this process.
+
+  """
+
   use GenServer
 
   alias Ecto.Multi
   alias Postgrex.Notifications
 
   alias MessageBroker.Event
+  alias MessageBroker.Publisher
 
   require Logger
 
@@ -14,8 +23,9 @@ defmodule MessageBroker.Notifier do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
+  @spec listen(String.t()) :: {:error, any} | {:ok, pid, reference}
   def listen(event_name) do
-    with {:ok, pid} <- Notifications.start_link(repo()),
+    with {:ok, pid} <- Notifications.start_link(repo().config()),
          {:ok, ref} <- Notifications.listen(pid, event_name) do
       {:ok, pid, ref}
     end
@@ -36,13 +46,18 @@ defmodule MessageBroker.Notifier do
          event <- get_event!(id) do
       Logger.info("Processing message broker event: #{inspect(event)}")
 
-      {:ok, _changes} =
-        Multi.new()
-        |> Multi.delete(:delete_event, event)
-        |> Multi.run(:publish_message, fn _, _ -> publish_event(event) end)
-        |> repo().transaction()
+      Multi.new()
+      |> Multi.delete(:delete_event, event)
+      |> Multi.run(:publish_message, fn _, _ -> Publisher.publish_event(event) end)
+      |> repo().transaction()
+      |> case do
+        {:ok, _changes} ->
+          {:noreply, :event_handled}
 
-      {:noreply, :event_handled}
+        {:error, _, _, _} ->
+          mark_as_error! event
+          {:noreply, :event_not_handled}
+      end
     else
       error -> {:stop, error, []}
     end
@@ -52,22 +67,7 @@ defmodule MessageBroker.Notifier do
     {:noreply, :event_received}
   end
 
-  defp publish_event(%Event{event_name: event_name, payload: payload}) do
-    event = %{
-      event_name: event_name,
-      timestamp: get_timestamp(),
-      payload: Jason.encode!(payload)
-    }
-
-    {:ok, event}
-  end
-
-  defp get_timestamp do
-    {:ok, dt} = DateTime.now("Etc/UTC")
-    DateTime.to_iso8601(dt, :extended)
-  end
-
   defp get_event!(id), do: repo().get!(Event, id)
-
-  defp repo, do: MessageBroker.config().repo
+  defp mark_as_error!(event), do: repo().update!(event, status: "error")
+  defp repo, do: MessageBroker.get_config(:repo)
 end
