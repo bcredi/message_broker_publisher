@@ -3,6 +3,14 @@ defmodule MessageBroker.Event do
   The ...
   """
 
+  @type uuid :: String.t()
+
+  @type t :: %__MODULE__{
+          id: uuid(),
+          event_name: String.t(),
+          payload: map()
+        }
+
   use Ecto.Schema
   import Ecto.Changeset
 

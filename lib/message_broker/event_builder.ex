@@ -64,12 +64,13 @@ defmodule MessageBroker.EventBuilder do
           %Ecto.Changeset{}
 
       """
+      @spec new(struct | map) :: Ecto.Changeset.t()
       def new(%_{} = struct), do: build_event_from_struct(struct)
       def new(%{} = map), do: build_event_from_map(map)
 
       defp build_event_from_struct(%_{} = schema) do
         attrs = %{
-          event: unquote(event_name),
+          event_name: unquote(event_name),
           payload: struct(__MODULE__, Map.from_struct(schema))
         }
 
@@ -78,7 +79,7 @@ defmodule MessageBroker.EventBuilder do
 
       defp build_event_from_map(%{} = map) do
         attrs = %{
-          event: unquote(event_name),
+          event_name: unquote(event_name),
           payload: struct(__MODULE__, map)
         }
 
