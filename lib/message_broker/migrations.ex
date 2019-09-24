@@ -10,9 +10,9 @@ defmodule MessageBroker.Migrations do
 
   def up do
     create table(:message_broker_events, primary_key: false) do
-      add :id, :binary_id, primary_key: true
-      add :event_name, :string
-      add :payload, :map
+      add(:id, :binary_id, primary_key: true)
+      add(:event_name, :string)
+      add(:payload, :map)
 
       timestamps()
     end
@@ -46,6 +46,6 @@ defmodule MessageBroker.Migrations do
   def down do
     execute("DROP TRIGGER IF EXISTS #{@trigger_name} ON #{@table_name}")
     execute("DROP FUNCTION IF EXISTS #{@function_name} CASCADE")
-    drop table(:message_broker_events)
+    drop(table(:message_broker_events))
   end
 end

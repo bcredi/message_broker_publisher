@@ -22,9 +22,41 @@ defmodule MessageBroker do
     Supervisor.init(children, strategy: :one_for_one)
   end
 
+  @doc """
+  Returns a `%MessageBroker.Config{}` struct.
+
+  ## Examples
+
+  In your `config.exs`:
+
+      config :message_broker,
+        repo: MyApp.Repo,
+        rabbitmq_user: "user",
+        rabbitmq_password: "password",
+        rabbitmq_host: "localhost",
+        rabbitmq_exchange: "some_exchange",
+        rabbitmq_topics: ["topic1", "topic2"]
+
+      iex> config()
+      %MessageBroker.Config{}
+
+  """
   @spec config :: MessageBroker.Config.t()
   def config, do: struct(MessageBroker.Config, Application.get_all_env(:message_broker))
 
+  @doc """
+  Returns a specific *key* for the config.
+  If the *key* doesn't exists, returns nil.
+
+  ## Examples
+
+      iex> get_config(:repo)
+      MyApp.Repo
+
+      iex> get_config(:invalid_key)
+      nil
+
+  """
   @spec get_config(atom()) :: any
   def get_config(key), do: Map.get(config(), key)
 

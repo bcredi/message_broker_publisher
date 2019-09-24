@@ -20,7 +20,7 @@ defmodule MessageBroker.EventBuilder do
       %Ecto.Changeset{
         action: nil,
         changes: %{
-          event: "my_event",
+          event_name: "my_event",
           payload: %MyEvent{
             key1: "1",
             key2: "2"
@@ -35,7 +35,7 @@ defmodule MessageBroker.EventBuilder do
       %Ecto.Changeset{
         action: nil,
         changes: %{
-          event: "my_event",
+          event_name: "my_event",
           payload: %MyEvent{
             key1: "1",
             key2: "2"

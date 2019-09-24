@@ -55,7 +55,7 @@ defmodule MessageBroker.Notifier do
           {:noreply, :event_handled}
 
         {:error, _, _, _} ->
-          mark_as_error! event
+          mark_as_error!(event)
           {:noreply, :event_not_handled}
       end
     else
