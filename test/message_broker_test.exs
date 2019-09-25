@@ -13,8 +13,7 @@ defmodule MessageBrokerTest do
       rabbitmq_user: "user",
       rabbitmq_password: "password",
       rabbitmq_host: "localhost",
-      rabbitmq_exchange: "some_exchange",
-      rabbitmq_topics: ["topic1", "topic2"]
+      rabbitmq_exchange: "some_exchange"
     }
 
     test "returns the specified key of MessageBroker.Config struct" do

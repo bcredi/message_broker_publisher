@@ -34,8 +34,7 @@ defmodule MessageBroker do
         rabbitmq_user: "user",
         rabbitmq_password: "password",
         rabbitmq_host: "localhost",
-        rabbitmq_exchange: "some_exchange",
-        rabbitmq_topics: ["topic1", "topic2"]
+        rabbitmq_exchange: "some_exchange"
 
       iex> config()
       %MessageBroker.Config{}
@@ -68,8 +67,7 @@ defmodule MessageBroker do
             rabbitmq_user: String.t(),
             rabbitmq_password: String.t(),
             rabbitmq_host: String.t(),
-            rabbitmq_exchange: String.t(),
-            rabbitmq_topics: list(String.t())
+            rabbitmq_exchange: String.t()
           }
 
     defstruct [
@@ -77,8 +75,7 @@ defmodule MessageBroker do
       :rabbitmq_user,
       :rabbitmq_password,
       :rabbitmq_host,
-      :rabbitmq_exchange,
-      :rabbitmq_topics
+      :rabbitmq_exchange
     ]
   end
 end

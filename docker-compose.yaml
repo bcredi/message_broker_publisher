@@ -1,0 +1,32 @@
+version: '3.5'
+
+services:
+  db:
+    image: postgres:11-alpine
+    environment:
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - 5438
+    networks:
+      default:
+        aliases:
+          - message-broker-db
+
+  rabbitmq:
+    image: rabbitmq:3.7-management-alpine
+    ports:
+      - "5602:5672"
+      - "15602:15672"
+    networks:
+      default:
+        aliases:
+          - message-broker-rabbitmq
+
+volumes:
+  build:
+  deps:
+
+networks:
+  default:
+    external:
+      name: message-broker

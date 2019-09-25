@@ -31,32 +31,44 @@ defmodule MessageBroker.Publisher do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
-  @callback publish_event(Event.t()) :: {:ok, :ok} | {:error, :topic_not_allowed}
-  def publish_event(%Event{event_name: topic, payload: payload}) do
+  @doc """
+  Publish event to rabbitmq exchange.
+  """
+  @callback publish_event(Event.t()) :: {:ok, :ok} | {:error, reason :: :blocked | :closed}
+  def publish_event(%Event{event_name: topic} = event) do
+    with :ok <- GenServer.call(__MODULE__, {:publish, topic, build_event_payload(event)}) do
+      {:ok, :ok}
+    else
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @doc """
+  Build the binary payload to publish in the rabbitmq exchanges.
+
+  ## Examples
+
+      iex> build_event_payload(%Event{event_name: "my_event", payload: %{id: "123"}})
+      "{\"event\":\"my_event\",\"payload\":{\"id\":\"123\"},\"timestamp\":\"2019-09-25T19:54:20.464057Z\"}"
+
+  """
+  def build_event_payload(%Event{event_name: topic, payload: payload}) do
     event = %{
       event: topic,
       timestamp: get_timestamp(),
       payload: payload
     }
 
-    publish(topic, Jason.encode!(event))
-  end
-
-  defp publish(topic, payload) do
-    allowed_topics = MessageBroker.get_config(:rabbitmq_topics)
-
-    if topic in allowed_topics do
-      :ok = GenServer.cast(__MODULE__, {:publish, topic, payload})
-      {:ok, :ok}
-    else
-      {:error, :topic_not_allowed}
-    end
+    Jason.encode!(event)
   end
 
   defp get_timestamp do
     {:ok, dt} = DateTime.now("Etc/UTC")
     DateTime.to_iso8601(dt, :extended)
   end
+
+  @impl GenServer
+  def init(_opts), do: rabbitmq_connect()
 
   defp rabbitmq_connect do
     Logger.info("Connecting to RabbitMQ (Publisher).")
@@ -86,11 +98,6 @@ defmodule MessageBroker.Publisher do
   end
 
   @impl GenServer
-  def init(_opts) do
-    rabbitmq_connect()
-  end
-
-  @impl GenServer
   def handle_info({:EXIT, _pid, :shutdown}, _state) do
     File.touch("rabbit_error")
     Logger.info("Publisher connection has died (:EXIT), therefore I have to die as well.")
@@ -110,9 +117,8 @@ defmodule MessageBroker.Publisher do
   end
 
   @impl GenServer
-  def handle_cast({:publish, topic, payload}, channel) do
-    :ok = Basic.publish(channel, exchange(), topic, payload, persistent: true)
-    {:noreply, channel}
+  def handle_call({:publish, topic, payload}, _from, channel) do
+    {:reply, Basic.publish(channel, exchange(), topic, payload, persistent: true), channel}
   end
 
   defp exchange, do: MessageBroker.get_config(:rabbitmq_exchange)
