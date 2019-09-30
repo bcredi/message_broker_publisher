@@ -11,7 +11,7 @@ defmodule MessageBroker.Consumer.MessageRetrier do
   def init(_opts), do: rabbitmq_connect()
 
   @doc """
-  Publish event to rabbitmq exchange.
+  Retry a message if possible.
   """
   @callback retry_message(map()) :: {:ok, :message_retried} | {:error, :message_retries_expired}
   def retry_message(message, headers) do
@@ -64,7 +64,7 @@ defmodule MessageBroker.Consumer.MessageRetrier do
   defp pow(base, 1), do: base
   defp pow(base, exp), do: base * pow(base, exp - 1)
 
-  def create_retry_queue(channel, delay) do
+  defp create_retry_queue(channel, delay) do
     Queue.declare(channel, "#{queue()}.retry.#{delay}",
       durable: true,
       arguments: [

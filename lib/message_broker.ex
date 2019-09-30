@@ -5,7 +5,7 @@ defmodule MessageBroker do
 
   use Supervisor
 
-  alias MessageBroker.{Consumer, Notifier, Publisher}
+  alias MessageBroker.{Consumer, Publisher}
   alias MessageBroker.Consumer.MessageRetrier
   alias MessageBroker.Publisher.Notifier
 
