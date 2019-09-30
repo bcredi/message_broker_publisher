@@ -1,4 +1,4 @@
-defmodule MessageBroker.Migrations do
+defmodule MessageBroker.Publisher.Migrations do
   @moduledoc false
 
   use Ecto.Migration

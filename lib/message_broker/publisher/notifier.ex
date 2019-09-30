@@ -1,4 +1,4 @@
-defmodule MessageBroker.Notifier do
+defmodule MessageBroker.Publisher.Notifier do
   @moduledoc """
   Event Notifier.
 
@@ -12,8 +12,8 @@ defmodule MessageBroker.Notifier do
   alias Ecto.Multi
   alias Postgrex.Notifications
 
-  alias MessageBroker.Event
   alias MessageBroker.Publisher
+  alias MessageBroker.Publisher.Event
 
   require Logger
 
@@ -33,9 +33,8 @@ defmodule MessageBroker.Notifier do
 
   @impl GenServer
   def init(opts) do
-    with {:ok, _pid, _ref} <- listen(@channel) do
-      {:ok, opts}
-    else
+    case listen(@channel) do
+      {:ok, _pid, _ref} -> {:ok, opts}
       error -> {:stop, error}
     end
   end

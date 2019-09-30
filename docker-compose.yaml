@@ -1,6 +1,20 @@
 version: '3.5'
 
 services:
+  test:
+    image: elixir:1.9-alpine
+    command: mix do local.hex --force, deps.get, test, credo --strict
+    environment:
+      - MIX_ENV=test
+    working_dir: /app
+    volumes:
+      - .:/app
+      - "build:/app/_build"
+      - "deps:/app/deps"
+    depends_on:
+      - db
+      - rabbitmq
+
   db:
     image: postgres:11-alpine
     environment:

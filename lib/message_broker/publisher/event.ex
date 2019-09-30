@@ -1,4 +1,4 @@
-defmodule MessageBroker.Event do
+defmodule MessageBroker.Publisher.Event do
   @moduledoc """
   The ...
   """

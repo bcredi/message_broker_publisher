@@ -19,16 +19,15 @@ defmodule MessageBroker.Publisher do
 
   """
 
-  use AMQP
-  use GenServer
+  use MessageBroker.RabbitmqServer, as: "Publisher"
 
-  require Logger
+  alias MessageBroker.Publisher.Event
 
-  alias AMQP.Basic
-  alias MessageBroker.Event
-
-  def start_link(opts \\ []) do
-    GenServer.start_link(__MODULE__, opts, name: __MODULE__)
+  @impl GenServer
+  def init(_opts) do
+    {:ok, chan} = rabbitmq_connect()
+    :ok = Exchange.topic(chan, exchange(), durable: true)
+    {:ok, chan}
   end
 
   @doc """
@@ -36,9 +35,8 @@ defmodule MessageBroker.Publisher do
   """
   @callback publish_event(Event.t()) :: {:ok, :ok} | {:error, reason :: :blocked | :closed}
   def publish_event(%Event{event_name: topic} = event) do
-    with :ok <- GenServer.call(__MODULE__, {:publish, topic, build_event_payload(event)}) do
-      {:ok, :ok}
-    else
+    case GenServer.call(__MODULE__, {:publish, topic, build_event_payload(event)}) do
+      :ok -> {:ok, :ok}
       {:error, reason} -> {:error, reason}
     end
   end
@@ -65,55 +63,6 @@ defmodule MessageBroker.Publisher do
   defp get_timestamp do
     {:ok, dt} = DateTime.now("Etc/UTC")
     DateTime.to_iso8601(dt, :extended)
-  end
-
-  @impl GenServer
-  def init(_opts), do: rabbitmq_connect()
-
-  defp rabbitmq_connect do
-    Logger.info("Connecting to RabbitMQ (Publisher).")
-
-    case open_connection() do
-      {:ok, conn} ->
-        # Get notifications when the connection goes down
-        Process.monitor(conn.pid)
-        {:ok, chan} = Channel.open(conn)
-        :ok = Exchange.topic(chan, exchange(), durable: true)
-        {:ok, chan}
-
-      {:error, error} ->
-        # Reconnection loop
-        Logger.info("Reconnecting to RabbitMQ (Publisher).\nReason: #{inspect(error)}")
-        Process.sleep(10_000)
-        rabbitmq_connect()
-    end
-  end
-
-  defp open_connection do
-    user = MessageBroker.get_config(:rabbitmq_user)
-    password = MessageBroker.get_config(:rabbitmq_password)
-    host = MessageBroker.get_config(:rabbitmq_host)
-
-    Connection.open("amqp://#{user}:#{password}@#{host}")
-  end
-
-  @impl GenServer
-  def handle_info({:EXIT, _pid, :shutdown}, _state) do
-    File.touch("rabbit_error")
-    Logger.info("Publisher connection has died (:EXIT), therefore I have to die as well.")
-    Process.exit(self(), :kill)
-  end
-
-  @impl GenServer
-  def handle_info({:DOWN, _, :process, _pid, reason}, _state) do
-    File.touch("rabbit_error")
-
-    Logger.error("""
-    Publisher connection has died (:DOWN), therefore I have to die as well.\n
-    Reason: #{inspect(reason)}
-    """)
-
-    Process.exit(self(), :kill)
   end
 
   @impl GenServer

@@ -1,8 +1,8 @@
-defmodule MessageBroker.EventBuilderTest do
+defmodule MessageBroker.Publisher.EventBuilderTest do
   use ExUnit.Case
 
   defmodule MyEvent do
-    use MessageBroker.EventBuilder, as: "my_event"
+    use MessageBroker.Publisher.EventBuilder, as: "my_event"
     defstruct [:key1, :key2]
   end
 
@@ -10,18 +10,21 @@ defmodule MessageBroker.EventBuilderTest do
     defstruct [:key1, :key2, :key3]
   end
 
+  alias MessageBroker.Publisher.Event
+  alias MessageBroker.Publisher.EventBuilderTest.MyEvent
+
   describe "#new/1" do
     test "returns Ecto.Changeset with map as argument" do
       assert %Ecto.Changeset{
                changes: %{
                  event_name: "my_event",
-                 payload: %MessageBroker.EventBuilderTest.MyEvent{
+                 payload: %MyEvent{
                    key1: "1",
                    key2: "2"
                  }
                },
                errors: [],
-               data: %MessageBroker.Event{}
+               data: %Event{}
              } = MyEvent.new(%{key1: "1", key2: "2", key3: "3"})
     end
 
@@ -29,13 +32,13 @@ defmodule MessageBroker.EventBuilderTest do
       assert %Ecto.Changeset{
                changes: %{
                  event_name: "my_event",
-                 payload: %MessageBroker.EventBuilderTest.MyEvent{
+                 payload: %MyEvent{
                    key1: "1",
                    key2: "2"
                  }
                },
                errors: [],
-               data: %MessageBroker.Event{}
+               data: %Event{}
              } = MyEvent.new(%MyStruct{key1: "1", key2: "2", key3: "3"})
     end
   end

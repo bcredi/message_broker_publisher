@@ -2,7 +2,7 @@ defmodule MessageBroker.PublisherTest do
   use ExUnit.Case
 
   alias MessageBroker.Publisher
-  alias MessageBroker.Event
+  alias MessageBroker.Publisher.Event
 
   describe "#publish_event/1" do
     test "sucessful publish an event" do

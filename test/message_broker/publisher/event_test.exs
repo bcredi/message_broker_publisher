@@ -1,7 +1,7 @@
-defmodule MessageBroker.EventTest do
+defmodule MessageBroker.Publisher.EventTest do
   use ExUnit.Case
 
-  alias MessageBroker.Event
+  alias MessageBroker.Publisher.Event
 
   describe "#changeset/2" do
     test "require event_name and payload" do

@@ -10,9 +10,9 @@ defmodule MessageBrokerTest do
   describe "#get_config/1" do
     @configs %{
       repo: MyApp.Repo,
-      rabbitmq_user: "user",
-      rabbitmq_password: "password",
-      rabbitmq_host: "localhost",
+      rabbitmq_user: "guest",
+      rabbitmq_password: "guest",
+      rabbitmq_host: "message-broker-rabbitmq",
       rabbitmq_exchange: "some_exchange"
     }
 
