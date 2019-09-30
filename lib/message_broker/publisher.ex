@@ -19,26 +19,31 @@ defmodule MessageBroker.Publisher do
 
   """
 
-  use AMQP
-  use GenServer
+  use MessageBroker.RabbitmqServer, as: "Publisher", name_key: :publisher_name
 
-  require Logger
+  alias MessageBroker.Publisher.Event
 
-  alias AMQP.Basic
-  alias MessageBroker.Event
-
-  def start_link(opts \\ []) do
-    GenServer.start_link(__MODULE__, opts, name: __MODULE__)
+  @impl GenServer
+  def init(
+        %{
+          rabbitmq_user: user,
+          rabbitmq_password: password,
+          rabbitmq_host: host,
+          rabbitmq_exchange: exchange
+        } = config
+      ) do
+    {:ok, chan} = rabbitmq_connect(user, password, host)
+    :ok = Exchange.topic(chan, exchange, durable: true)
+    {:ok, [config: config, channel: chan]}
   end
 
   @doc """
   Publish event to rabbitmq exchange.
   """
   @callback publish_event(Event.t()) :: {:ok, :ok} | {:error, reason :: :blocked | :closed}
-  def publish_event(%Event{event_name: topic} = event) do
-    with :ok <- GenServer.call(__MODULE__, {:publish, topic, build_event_payload(event)}) do
-      {:ok, :ok}
-    else
+  def publish_event(module, %Event{event_name: topic} = event) do
+    case GenServer.call(module, {:publish, topic, build_event_payload(event)}) do
+      :ok -> {:ok, :ok}
       {:error, reason} -> {:error, reason}
     end
   end
@@ -52,6 +57,7 @@ defmodule MessageBroker.Publisher do
       "{\"event\":\"my_event\",\"payload\":{\"id\":\"123\"},\"timestamp\":\"2019-09-25T19:54:20.464057Z\"}"
 
   """
+  @callback build_event_payload(Event.t()) :: String.t()
   def build_event_payload(%Event{event_name: topic, payload: payload}) do
     event = %{
       event: topic,
@@ -68,58 +74,11 @@ defmodule MessageBroker.Publisher do
   end
 
   @impl GenServer
-  def init(_opts), do: rabbitmq_connect()
-
-  defp rabbitmq_connect do
-    Logger.info("Connecting to RabbitMQ (Publisher).")
-
-    case open_connection() do
-      {:ok, conn} ->
-        # Get notifications when the connection goes down
-        Process.monitor(conn.pid)
-        {:ok, chan} = Channel.open(conn)
-        :ok = Exchange.topic(chan, exchange(), durable: true)
-        {:ok, chan}
-
-      {:error, error} ->
-        # Reconnection loop
-        Logger.info("Reconnecting to RabbitMQ (Publisher).\nReason: #{inspect(error)}")
-        Process.sleep(10_000)
-        rabbitmq_connect()
-    end
+  def handle_call(
+        {:publish, topic, payload},
+        _from,
+        [config: %{rabbitmq_exchange: exchange}, channel: channel] = state
+      ) do
+    {:reply, Basic.publish(channel, exchange, topic, payload, persistent: true), state}
   end
-
-  defp open_connection do
-    user = MessageBroker.get_config(:rabbitmq_user)
-    password = MessageBroker.get_config(:rabbitmq_password)
-    host = MessageBroker.get_config(:rabbitmq_host)
-
-    Connection.open("amqp://#{user}:#{password}@#{host}")
-  end
-
-  @impl GenServer
-  def handle_info({:EXIT, _pid, :shutdown}, _state) do
-    File.touch("rabbit_error")
-    Logger.info("Publisher connection has died (:EXIT), therefore I have to die as well.")
-    Process.exit(self(), :kill)
-  end
-
-  @impl GenServer
-  def handle_info({:DOWN, _, :process, _pid, reason}, _state) do
-    File.touch("rabbit_error")
-
-    Logger.error("""
-    Publisher connection has died (:DOWN), therefore I have to die as well.\n
-    Reason: #{inspect(reason)}
-    """)
-
-    Process.exit(self(), :kill)
-  end
-
-  @impl GenServer
-  def handle_call({:publish, topic, payload}, _from, channel) do
-    {:reply, Basic.publish(channel, exchange(), topic, payload, persistent: true), channel}
-  end
-
-  defp exchange, do: MessageBroker.get_config(:rabbitmq_exchange)
 end

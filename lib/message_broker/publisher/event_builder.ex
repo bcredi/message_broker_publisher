@@ -1,4 +1,4 @@
-defmodule MessageBroker.EventBuilder do
+defmodule MessageBroker.Publisher.EventBuilder do
   @moduledoc """
   Event builder for the message broker context.
   Use the `EventBuilder` to define new events. It's a small wraper around the `Event.changeset/2`.
@@ -9,7 +9,7 @@ defmodule MessageBroker.EventBuilder do
   ## Examples
 
       defmodule MyEvent do
-        use MessageBroker.EventBuilder, as: "my_event"
+        use MessageBroker.Publisher.EventBuilder, as: "my_event"
 
         defstruct [:key1, :key2]
       end
@@ -48,7 +48,7 @@ defmodule MessageBroker.EventBuilder do
 
   """
 
-  alias MessageBroker.Event
+  alias MessageBroker.Publisher.Event
 
   defmacro __using__(as: event_name) when is_bitstring(event_name) do
     quote do

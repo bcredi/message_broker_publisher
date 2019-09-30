@@ -25,7 +25,13 @@ defmodule MessageBroker.MixProject do
       {:ecto_sql, "~> 3.1"},
       {:postgrex, ">= 0.0.0"},
       {:jason, "~> 1.0"},
-      {:amqp, "~> 1.2"}
+      {:broadway, "~> 0.4.0"},
+      {:broadway_rabbitmq, "~> 0.4.0"},
+      {:amqp, "~> 1.3"},
+      {:credo, "~> 1.1.0", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.0.0-rc.7", only: [:dev], runtime: false},
+      {:mox, "~> 0.5", only: :test},
+      {:faker, "~> 0.13", only: :test}
     ]
   end
 

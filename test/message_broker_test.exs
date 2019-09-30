@@ -1,30 +1,43 @@
 defmodule MessageBrokerTest do
   use ExUnit.Case
 
-  describe "#config/0" do
-    test "returns the MessageBroker.Config struct" do
-      assert %MessageBroker.Config{} = MessageBroker.config()
+  import MessageBroker.ApplicationTestHelper
+
+  describe "consumer" do
+    test "initialize" do
+      config = %{
+        rabbitmq_user: "guest",
+        rabbitmq_password: "guest",
+        rabbitmq_host: "message-broker-rabbitmq",
+        rabbitmq_exchange: "example_exchange",
+        rabbitmq_queue: "example_queue",
+        rabbitmq_subscribed_topics: ["test.test"],
+        rabbitmq_message_handler: &MessageBroker.MessageHandlerMock.handle_message/2,
+        rabbitmq_broadway_options: [],
+        rabbitmq_retries_count: 3
+      }
+
+      assert {:ok, pid} = start_consumer(MyConsumer, config)
+      assert is_pid(pid)
+
+      stop_supervisor(pid)
     end
   end
 
-  describe "#get_config/1" do
-    @configs %{
-      repo: MyApp.Repo,
-      rabbitmq_user: "user",
-      rabbitmq_password: "password",
-      rabbitmq_host: "localhost",
-      rabbitmq_exchange: "some_exchange"
-    }
+  describe "publisher" do
+    test "initialize" do
+      config = %{
+        repo: MessageBroker.Repo,
+        rabbitmq_user: "guest",
+        rabbitmq_password: "guest",
+        rabbitmq_host: "message-broker-rabbitmq",
+        rabbitmq_exchange: "example_exchange"
+      }
 
-    test "returns the specified key of MessageBroker.Config struct" do
-      for {key, value} <- @configs do
-        :ok = Application.put_env(:message_broker, key, value)
-        assert value == MessageBroker.get_config(key)
-      end
-    end
+      assert {:ok, pid} = start_publisher(MyPublisher, config)
+      assert is_pid(pid)
 
-    test "returns nil if the key doesn't exists" do
-      assert is_nil(MessageBroker.get_config(:invalid_key))
+      stop_supervisor(pid)
     end
   end
 end
