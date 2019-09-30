@@ -92,7 +92,6 @@ defmodule MessageBroker do
 
     defstruct [
       :repo,
-      :rabbitmq_consumer_message_handler,
       rabbitmq_consumer_enabled: false,
       rabbitmq_publisher_enabled: false,
       rabbitmq_user: "guest",
@@ -101,6 +100,7 @@ defmodule MessageBroker do
       rabbitmq_exchange: "example_exchange",
       rabbitmq_consumer_queue: "example_queue",
       rabbitmq_consumer_subscribed_topics: [],
+      rabbitmq_consumer_message_handler: &MessageBroker.MessageHandler.handle_message/2,
       rabbitmq_consumer_broadway_options: [],
       rabbitmq_consumer_retries_count: 3
     ]

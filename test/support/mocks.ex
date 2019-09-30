@@ -1,1 +1,1 @@
-Mox.defmock(MessageBroker.MessageHandlerMock, for: MessageBroker.MessageHandlerMock)
+Mox.defmock(MessageBroker.MessageHandlerMock, for: MessageBroker.MessageHandler)
