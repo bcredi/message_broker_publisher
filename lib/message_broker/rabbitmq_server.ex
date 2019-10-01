@@ -12,14 +12,14 @@ defmodule MessageBroker.RabbitmqServer do
 
       require Logger
 
-      def start_link(opts \\ []) do
-        GenServer.start_link(__MODULE__, opts, name: __MODULE__)
+      def start_link(config) do
+        GenServer.start_link(__MODULE__, config, name: __MODULE__)
       end
 
-      defp rabbitmq_connect do
+      defp rabbitmq_connect(user, password, host) do
         Logger.info("Connecting to RabbitMQ (#{unquote(server_name)}).")
 
-        case open_connection() do
+        case open_connection(user, password, host) do
           {:ok, conn} ->
             # Get notifications when the connection goes down
             Process.monitor(conn.pid)
@@ -33,17 +33,12 @@ defmodule MessageBroker.RabbitmqServer do
             )
 
             Process.sleep(10_000)
-            rabbitmq_connect()
+            rabbitmq_connect(user, password, host)
         end
       end
 
-      defp open_connection do
-        Connection.open(
-          username: MessageBroker.get_config(:rabbitmq_user),
-          password: MessageBroker.get_config(:rabbitmq_password),
-          host: MessageBroker.get_config(:rabbitmq_host),
-          virtual_host: "/"
-        )
+      defp open_connection(user, password, host) do
+        Connection.open(username: user, password: password, host: host, virtual_host: "/")
       end
 
       @impl GenServer

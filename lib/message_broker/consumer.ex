@@ -11,23 +11,31 @@ defmodule MessageBroker.Consumer do
   alias Broadway.Message
   alias MessageBroker.Consumer.{MessageRetrier, Setup}
 
-  def start_link(_opts) do
-    Setup.init()
-    Broadway.start_link(__MODULE__, broadway_options())
+  def start_link(config) do
+    Setup.init(config)
+    Broadway.start_link(__MODULE__, broadway_options(config))
   end
 
-  defp broadway_options do
+  defp broadway_options(%{
+         rabbitmq_user: user,
+         rabbitmq_password: password,
+         rabbitmq_host: host,
+         rabbitmq_queue: queue,
+         rabbitmq_message_handler: message_handler,
+         rabbitmq_broadway_options: custom_options
+       }) do
     default = [
       name: MessageBrokerConsumer,
+      context: %{message_handler: message_handler},
       producers: [
         default: [
           module:
             {BroadwayRabbitMQ.Producer,
-             queue: MessageBroker.get_config(:rabbitmq_consumer_queue),
+             queue: queue,
              connection: [
-               username: MessageBroker.get_config(:rabbitmq_user),
-               password: MessageBroker.get_config(:rabbitmq_password),
-               host: MessageBroker.get_config(:rabbitmq_host)
+               username: user,
+               password: password,
+               host: host
              ],
              requeue: :never,
              metadata: [:headers]}
@@ -40,18 +48,19 @@ defmodule MessageBroker.Consumer do
       ]
     ]
 
-    Keyword.merge(default, MessageBroker.get_config(:rabbitmq_consumer_broadway_options))
+    Keyword.merge(default, custom_options)
   end
 
   @impl true
   def handle_message(
         _,
         %Message{data: data, metadata: %{headers: headers} = metadata} = message,
-        _
-      ) do
+        %{message_handler: message_handler}
+      )
+      when is_function(message_handler) do
     decoded_data = Jason.decode!(data)
 
-    case message_handler().(decoded_data, metadata) do
+    case message_handler.(decoded_data, metadata) do
       :ok -> message
       error -> handle_failed_message(message, error, data, headers)
     end
@@ -63,6 +72,4 @@ defmodule MessageBroker.Consumer do
       {:error, :message_retries_expired} -> Message.failed(message, error)
     end
   end
-
-  defp message_handler, do: MessageBroker.get_config(:rabbitmq_consumer_message_handler)
 end

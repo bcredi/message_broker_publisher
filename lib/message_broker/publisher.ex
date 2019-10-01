@@ -24,10 +24,17 @@ defmodule MessageBroker.Publisher do
   alias MessageBroker.Publisher.Event
 
   @impl GenServer
-  def init(_opts) do
-    {:ok, chan} = rabbitmq_connect()
-    :ok = Exchange.topic(chan, exchange(), durable: true)
-    {:ok, chan}
+  def init(
+        %{
+          rabbitmq_user: user,
+          rabbitmq_password: password,
+          rabbitmq_host: host,
+          rabbitmq_exchange: exchange
+        } = config
+      ) do
+    {:ok, chan} = rabbitmq_connect(user, password, host)
+    :ok = Exchange.topic(chan, exchange, durable: true)
+    {:ok, [config: config, channel: chan]}
   end
 
   @doc """
@@ -66,9 +73,11 @@ defmodule MessageBroker.Publisher do
   end
 
   @impl GenServer
-  def handle_call({:publish, topic, payload}, _from, channel) do
-    {:reply, Basic.publish(channel, exchange(), topic, payload, persistent: true), channel}
+  def handle_call(
+        {:publish, topic, payload},
+        _from,
+        [config: %{rabbitmq_exchange: exchange}, channel: channel] = state
+      ) do
+    {:reply, Basic.publish(channel, exchange, topic, payload, persistent: true), state}
   end
-
-  defp exchange, do: MessageBroker.get_config(:rabbitmq_exchange)
 end

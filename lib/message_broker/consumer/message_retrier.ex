@@ -8,7 +8,19 @@ defmodule MessageBroker.Consumer.MessageRetrier do
   alias AMQP.Basic
 
   @impl GenServer
-  def init(_opts), do: rabbitmq_connect()
+  def init(
+        %{
+          rabbitmq_user: user,
+          rabbitmq_password: password,
+          rabbitmq_host: host,
+          rabbitmq_exchange: _exchange,
+          rabbitmq_queue: _queue,
+          rabbitmq_retries_count: _retries
+        } = config
+      ) do
+    {:ok, chan} = rabbitmq_connect(user, password, host)
+    {:ok, [config: config, channel: chan]}
+  end
 
   @doc """
   Retry a message if possible.
@@ -22,31 +34,29 @@ defmodule MessageBroker.Consumer.MessageRetrier do
   end
 
   @impl GenServer
-  def handle_call({:retry, message, headers}, _from, channel) do
-    {:reply, handle_failed_message(message, headers, channel), channel}
+  def handle_call({:retry, message, headers}, _from, [config: config, channel: channel] = state) do
+    {:reply, handle_failed_message(message, headers, channel, config), state}
   end
 
-  defp handle_failed_message(message, headers, channel) do
+  defp handle_failed_message(message, headers, channel, %{
+         rabbitmq_exchange: exchange,
+         rabbitmq_queue: queue,
+         rabbitmq_retries_count: max_retries
+       }) do
     retries_count = death_count(headers)
 
-    if retries_count < max_retries() do
+    if retries_count < max_retries do
       delay = exponential_delay_milliseconds(retries_count)
-      routing_key = "#{queue()}.#{delay}"
+      routing_key = "#{queue}.#{delay}"
 
-      {:ok, %{queue: retry_queue}} = create_retry_queue(channel, delay)
-      :ok = Queue.bind(channel, retry_queue, exchange(), routing_key: routing_key)
+      {:ok, %{queue: retry_queue}} = create_retry_queue(channel, queue, delay)
+      :ok = Queue.bind(channel, retry_queue, exchange, routing_key: routing_key)
 
-      Basic.publish(channel, exchange(), routing_key, message, headers: headers, persistent: true)
+      Basic.publish(channel, exchange, routing_key, message, headers: headers, persistent: true)
     else
       {:error, :message_retries_expired}
     end
   end
-
-  defp max_retries, do: MessageBroker.get_config(:rabbitmq_consumer_retries_count)
-
-  defp queue, do: MessageBroker.get_config(:rabbitmq_consumer_queue)
-
-  defp exchange, do: MessageBroker.get_config(:rabbitmq_exchange)
 
   defp death_count(:undefined), do: 0
 
@@ -64,12 +74,12 @@ defmodule MessageBroker.Consumer.MessageRetrier do
   defp pow(base, 1), do: base
   defp pow(base, exp), do: base * pow(base, exp - 1)
 
-  defp create_retry_queue(channel, delay) do
-    Queue.declare(channel, "#{queue()}.retry.#{delay}",
+  defp create_retry_queue(channel, queue, delay) do
+    Queue.declare(channel, "#{queue}.retry.#{delay}",
       durable: true,
       arguments: [
         {"x-dead-letter-exchange", :longstr, ""},
-        {"x-dead-letter-routing-key", :longstr, queue()},
+        {"x-dead-letter-routing-key", :longstr, queue},
         {"x-message-ttl", :long, delay},
         {"x-expires", :long, delay * 2}
       ]

@@ -12,13 +12,22 @@ defmodule MessageBroker.Consumer.Setup do
   @doc """
   Initialize MessageBrokerConsumer in RabbitMQ server.
   """
-  def init do
+  def init(
+        %{
+          rabbitmq_user: user,
+          rabbitmq_password: password,
+          rabbitmq_host: host,
+          rabbitmq_exchange: exchange,
+          rabbitmq_queue: queue,
+          rabbitmq_subscribed_topics: subscribed_topics
+        } = config
+      ) do
     Logger.info("Connecting to RabbitMQ to setup topics for queue.")
 
-    case rabbitmq_connection() do
+    case rabbitmq_connection(user, password, host) do
       {:ok, conn} ->
         {:ok, chan} = Channel.open(conn)
-        setup_queue(chan)
+        setup_queue(chan, exchange, queue, subscribed_topics)
 
       {:error, error} ->
         Logger.error(
@@ -26,23 +35,15 @@ defmodule MessageBroker.Consumer.Setup do
         )
 
         Process.sleep(10_000)
-        init()
+        init(config)
     end
   end
 
-  defp rabbitmq_connection do
-    Connection.open(
-      username: MessageBroker.get_config(:rabbitmq_user),
-      password: MessageBroker.get_config(:rabbitmq_password),
-      host: MessageBroker.get_config(:rabbitmq_host),
-      virtual_host: "/"
-    )
+  defp rabbitmq_connection(user, password, host) do
+    Connection.open(username: user, password: password, host: host, virtual_host: "/")
   end
 
-  defp setup_queue(chan) do
-    exchange = MessageBroker.get_config(:rabbitmq_exchange)
-    subscribed_topics = MessageBroker.get_config(:rabbitmq_consumer_subscribed_topics)
-    queue = MessageBroker.get_config(:rabbitmq_consumer_queue)
+  defp setup_queue(chan, exchange, queue, subscribed_topics) do
     queue_error = "#{queue}_error"
 
     {:ok, _} = Queue.declare(chan, queue_error, durable: true)

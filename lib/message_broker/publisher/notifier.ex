@@ -19,42 +19,42 @@ defmodule MessageBroker.Publisher.Notifier do
 
   @channel "event_created"
 
-  def start_link(opts \\ []) do
-    GenServer.start_link(__MODULE__, opts, name: __MODULE__)
+  def start_link(config) do
+    GenServer.start_link(__MODULE__, config, name: __MODULE__)
   end
 
-  @spec listen(String.t()) :: {:error, any} | {:ok, pid, reference}
-  def listen(event_name) do
-    with {:ok, pid} <- Notifications.start_link(repo().config()),
+  @spec listen(Struct.t(), String.t()) :: {:error, any} | {:ok, pid, reference}
+  def listen(repo, event_name) do
+    with {:ok, pid} <- Notifications.start_link(repo.config()),
          {:ok, ref} <- Notifications.listen(pid, event_name) do
       {:ok, pid, ref}
     end
   end
 
   @impl GenServer
-  def init(opts) do
-    case listen(@channel) do
-      {:ok, _pid, _ref} -> {:ok, opts}
+  def init(%{repo: repo} = config) do
+    case listen(repo, @channel) do
+      {:ok, _pid, _ref} -> {:ok, config}
       error -> {:stop, error}
     end
   end
 
   @impl GenServer
-  def handle_info({:notification, _pid, _ref, @channel, payload}, _) do
+  def handle_info({:notification, _pid, _ref, @channel, payload}, %{repo: repo}) do
     with {:ok, %{"record" => %{"id" => id}}} <- Jason.decode(payload),
-         event <- get_event!(id) do
+         event <- get_event!(repo, id) do
       Logger.info("Processing message broker event: #{inspect(event)}")
 
       Multi.new()
       |> Multi.delete(:delete_event, event)
       |> Multi.run(:publish_message, fn _, _ -> Publisher.publish_event(event) end)
-      |> repo().transaction()
+      |> repo.transaction()
       |> case do
         {:ok, _changes} ->
           {:noreply, :event_handled}
 
         {:error, _, _, _} ->
-          mark_as_error!(event)
+          mark_as_error!(repo, event)
           {:noreply, :event_not_handled}
       end
     else
@@ -66,7 +66,6 @@ defmodule MessageBroker.Publisher.Notifier do
     {:noreply, :event_received}
   end
 
-  defp get_event!(id), do: repo().get!(Event, id)
-  defp mark_as_error!(event), do: repo().update!(event, status: "error")
-  defp repo, do: MessageBroker.get_config(:repo)
+  defp get_event!(repo, id), do: repo.get!(Event, id)
+  defp mark_as_error!(repo, event), do: repo.update!(event, status: "error")
 end
