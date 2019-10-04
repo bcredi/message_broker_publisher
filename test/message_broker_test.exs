@@ -1,30 +1,55 @@
 defmodule MessageBrokerTest do
   use ExUnit.Case
 
-  describe "#config/0" do
-    test "returns the MessageBroker.Config struct" do
-      assert %MessageBroker.Config{} = MessageBroker.config()
+  describe "consumer" do
+    test "initialize" do
+      defmodule MyConsumer do
+        use MessageBroker, as: :consumer
+      end
+
+      config = %{
+        rabbitmq_user: "guest",
+        rabbitmq_password: "guest",
+        rabbitmq_host: "message-broker-rabbitmq",
+        rabbitmq_exchange: "example_exchange",
+        rabbitmq_queue: "example_queue",
+        rabbitmq_subscribed_topics: ["test.test"],
+        rabbitmq_message_handler: &MessageBroker.MessageHandlerMock.handle_message/2,
+        rabbitmq_broadway_options: [],
+        rabbitmq_retries_count: 3
+      }
+
+      assert {:ok, pid} = MyConsumer.start_link(config: config)
+      assert is_pid(pid)
+
+      Process.exit(pid, :normal)
     end
   end
 
-  describe "#get_config/1" do
-    @configs %{
-      repo: MyApp.Repo,
-      rabbitmq_user: "guest",
-      rabbitmq_password: "guest",
-      rabbitmq_host: "message-broker-rabbitmq",
-      rabbitmq_exchange: "some_exchange"
-    }
-
-    test "returns the specified key of MessageBroker.Config struct" do
-      for {key, value} <- @configs do
-        :ok = Application.put_env(:message_broker, key, value)
-        assert value == MessageBroker.get_config(key)
+  describe "producer" do
+    test "initialize" do
+      defmodule MessageBroker.Repo do
+        use Ecto.Repo,
+          otp_app: :message_broker,
+          adapter: Ecto.Adapters.Postgres
       end
-    end
 
-    test "returns nil if the key doesn't exists" do
-      assert is_nil(MessageBroker.get_config(:invalid_key))
+      defmodule MyPublisher do
+        use MessageBroker, as: :publisher
+      end
+
+      config = %{
+        repo: MessageBroker.Repo,
+        rabbitmq_user: "guest",
+        rabbitmq_password: "guest",
+        rabbitmq_host: "message-broker-rabbitmq",
+        rabbitmq_exchange: "example_exchange"
+      }
+
+      assert {:ok, pid} = MyPublisher.start_link(config: config)
+      assert is_pid(pid)
+
+      Process.exit(pid, :normal)
     end
   end
 end
