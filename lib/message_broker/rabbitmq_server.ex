@@ -3,7 +3,7 @@ defmodule MessageBroker.RabbitmqServer do
   Generic RabbitMQ GenServer to handle its connection.
   """
 
-  defmacro __using__(as: server_name) when is_bitstring(server_name) do
+  defmacro __using__(as: server_name, name_key: name) when is_bitstring(server_name) do
     quote do
       use AMQP
       use GenServer
@@ -13,7 +13,7 @@ defmodule MessageBroker.RabbitmqServer do
       require Logger
 
       def start_link(config) do
-        GenServer.start_link(__MODULE__, config, name: __MODULE__)
+        GenServer.start_link(__MODULE__, config, name: Map.get(config, unquote(name)))
       end
 
       defp rabbitmq_connect(user, password, host) do

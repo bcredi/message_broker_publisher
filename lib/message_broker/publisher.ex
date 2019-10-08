@@ -19,7 +19,7 @@ defmodule MessageBroker.Publisher do
 
   """
 
-  use MessageBroker.RabbitmqServer, as: "Publisher"
+  use MessageBroker.RabbitmqServer, as: "Publisher", name_key: :publisher_name
 
   alias MessageBroker.Publisher.Event
 
@@ -41,8 +41,8 @@ defmodule MessageBroker.Publisher do
   Publish event to rabbitmq exchange.
   """
   @callback publish_event(Event.t()) :: {:ok, :ok} | {:error, reason :: :blocked | :closed}
-  def publish_event(%Event{event_name: topic} = event) do
-    case GenServer.call(__MODULE__, {:publish, topic, build_event_payload(event)}) do
+  def publish_event(module, %Event{event_name: topic} = event) do
+    case GenServer.call(module, {:publish, topic, build_event_payload(event)}) do
       :ok -> {:ok, :ok}
       {:error, reason} -> {:error, reason}
     end

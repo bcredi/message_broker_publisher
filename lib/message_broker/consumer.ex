@@ -17,6 +17,8 @@ defmodule MessageBroker.Consumer do
   end
 
   defp broadway_options(%{
+         consumer_name: name,
+         message_retrier_name: message_retrier_name,
          rabbitmq_user: user,
          rabbitmq_password: password,
          rabbitmq_host: host,
@@ -25,8 +27,8 @@ defmodule MessageBroker.Consumer do
          rabbitmq_broadway_options: custom_options
        }) do
     default = [
-      name: MessageBrokerConsumer,
-      context: %{message_handler: message_handler},
+      name: name,
+      context: %{message_handler: message_handler, message_retrier_name: message_retrier_name},
       producers: [
         default: [
           module:
@@ -55,19 +57,19 @@ defmodule MessageBroker.Consumer do
   def handle_message(
         _,
         %Message{data: data, metadata: %{headers: headers} = metadata} = message,
-        %{message_handler: message_handler}
+        %{message_handler: message_handler, message_retrier_name: message_retrier_name}
       )
       when is_function(message_handler) do
     decoded_data = Jason.decode!(data)
 
     case message_handler.(decoded_data, metadata) do
       :ok -> message
-      error -> handle_failed_message(message, error, data, headers)
+      error -> handle_failed_message(message, error, data, headers, message_retrier_name)
     end
   end
 
-  defp handle_failed_message(message, error, data, headers) do
-    case MessageRetrier.retry_message(data, headers) do
+  defp handle_failed_message(message, error, data, headers, message_retrier_name) do
+    case MessageRetrier.retry_message(message_retrier_name, data, headers) do
       {:ok, :message_retried} -> message
       {:error, :message_retries_expired} -> Message.failed(message, error)
     end

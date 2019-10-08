@@ -11,6 +11,7 @@ defmodule MessageBroker.Publisher.Migrations do
   def up do
     create table(:message_broker_events, primary_key: false) do
       add(:id, :binary_id, primary_key: true)
+      add(:publisher_name, :string)
       add(:event_name, :string)
       add(:payload, :map)
 

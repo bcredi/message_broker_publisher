@@ -3,7 +3,7 @@ defmodule MessageBroker.Consumer.MessageRetrier do
   Retries failed messages in exponential time until rejects it.
   """
 
-  use MessageBroker.RabbitmqServer, as: "MessageRetrier"
+  use MessageBroker.RabbitmqServer, as: "MessageRetrier", name_key: :message_retrier_name
 
   alias AMQP.Basic
 
@@ -26,8 +26,8 @@ defmodule MessageBroker.Consumer.MessageRetrier do
   Retry a message if possible.
   """
   @callback retry_message(map()) :: {:ok, :message_retried} | {:error, :message_retries_expired}
-  def retry_message(message, headers) do
-    case GenServer.call(__MODULE__, {:retry, message, headers}) do
+  def retry_message(module, message, headers) do
+    case GenServer.call(module, {:retry, message, headers}) do
       :ok -> {:ok, :message_retried}
       error -> error
     end

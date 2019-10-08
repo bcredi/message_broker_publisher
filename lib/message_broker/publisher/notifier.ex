@@ -19,8 +19,8 @@ defmodule MessageBroker.Publisher.Notifier do
 
   @channel "event_created"
 
-  def start_link(config) do
-    GenServer.start_link(__MODULE__, config, name: __MODULE__)
+  def start_link(%{notifier_name: name} = config) do
+    GenServer.start_link(__MODULE__, config, name: name)
   end
 
   @spec listen(Struct.t(), String.t()) :: {:error, any} | {:ok, pid, reference}
@@ -40,14 +40,19 @@ defmodule MessageBroker.Publisher.Notifier do
   end
 
   @impl GenServer
-  def handle_info({:notification, _pid, _ref, @channel, payload}, %{repo: repo}) do
+  def handle_info({:notification, _pid, _ref, @channel, payload}, %{
+        publisher_name: publisher_name,
+        repo: repo
+      }) do
     with {:ok, %{"record" => %{"id" => id}}} <- Jason.decode(payload),
          event <- get_event!(repo, id) do
       Logger.info("Processing message broker event: #{inspect(event)}")
 
       Multi.new()
       |> Multi.delete(:delete_event, event)
-      |> Multi.run(:publish_message, fn _, _ -> Publisher.publish_event(event) end)
+      |> Multi.run(:publish_message, fn _, _ ->
+        publisher_name.publish_event(publisher_name, event)
+      end)
       |> repo.transaction()
       |> case do
         {:ok, _changes} ->
