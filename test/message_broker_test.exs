@@ -20,7 +20,7 @@ defmodule MessageBrokerTest do
       assert {:ok, pid} = start_consumer(MyConsumer, config)
       assert is_pid(pid)
 
-      kill_application(pid)
+      stop_supervisor(pid)
     end
   end
 
@@ -37,7 +37,7 @@ defmodule MessageBrokerTest do
       assert {:ok, pid} = start_publisher(MyPublisher, config)
       assert is_pid(pid)
 
-      kill_application(pid)
+      stop_supervisor(pid)
     end
   end
 end

@@ -6,8 +6,7 @@ defmodule MessageBroker.ConsumerTest do
 
   alias AMQP.{Basic, Channel, Connection, Queue}
   alias Broadway.Message
-  alias MessageBroker.{Consumer, MessageHandlerMock}
-  alias MessageBroker.Consumer.MessageRetrier
+  alias MessageBroker.MessageHandlerMock
 
   setup :verify_on_exit!
   setup :set_mox_global
@@ -20,6 +19,7 @@ defmodule MessageBroker.ConsumerTest do
           rabbitmq_user: "guest",
           rabbitmq_password: "guest",
           rabbitmq_exchange: "test_exchange",
+          rabbitmq_subscribed_topics: ["test.test"],
           rabbitmq_consumer_message_handler: &MessageBroker.MessageHandlerMock.handle_message/2
         })
 
@@ -34,29 +34,23 @@ defmodule MessageBroker.ConsumerTest do
       decoded_json = Jason.decode!(json)
       expect(MessageHandlerMock, :handle_message, 1, fn ^decoded_json, ^metadata -> :ok end)
 
-      assert ^message = MyConsumer.handle_message(nil, message, nil)
+      assert ^message =
+               MyConsumer.handle_message(nil, message, %{
+                 message_handler: &MessageBroker.MessageHandlerMock.handle_message/2,
+                 message_retrier_name: MessageBroker.Internal.SomeMessageRetrier
+               })
 
-      kill_application(pid)
+      stop_supervisor(pid)
       # Supervisor.terminate_child(MessageBrokerConsumer.Broadway.Supervisor, pid)
     end
 
     test "fail to consume an event and retries until dead-letter", %{pid: pid} do
-      {:ok, retrier_pid} =
-        MessageRetrier.start_link(%{
-          rabbitmq_host: "message-broker-rabbitmq",
-          rabbitmq_user: "guest",
-          rabbitmq_password: "guest",
-          rabbitmq_exchange: "test_exchange",
-          rabbitmq_queue: "example_queue",
-          rabbitmq_retries_count: 3
-        })
-
       send_rabbitmq_message("test.test", "{}")
 
       expect(MessageHandlerMock, :handle_message, 4, fn _, _ -> {:error, "some error"} end)
 
       Process.sleep(15_000)
-      kill_application(pid)
+      stop_supervisor(pid)
       # Supervisor.terminate_child(MessageBrokerConsumer.Broadway.Supervisor, pid)
       # Supervisor.terminate_child(MessageBroker.Supervisor, retrier_pid)
     end

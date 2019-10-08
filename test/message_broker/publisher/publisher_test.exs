@@ -12,7 +12,7 @@ defmodule MessageBroker.PublisherTest do
       event = %Event{event_name: "my_event", payload: %{id: "123"}}
       assert {:ok, :ok} = MyPublisher.publish_event(event)
 
-      kill_application(pid)
+      stop_supervisor(pid)
     end
   end
 
@@ -33,7 +33,7 @@ defmodule MessageBroker.PublisherTest do
 
       assert {:ok, _, _} = DateTime.from_iso8601(timestamp)
 
-      kill_application(pid)
+      stop_supervisor(pid)
     end
   end
 end

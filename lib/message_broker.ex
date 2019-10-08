@@ -29,10 +29,10 @@ defmodule MessageBroker do
       end
 
       defp consumer_name,
-        do: String.to_atom("Elixir.MessageBrokerInternal.#{unquote(name)}Consumer")
+        do: String.to_atom("Elixir.MessageBroker.Internal.#{unquote(name)}Consumer")
 
       defp message_retrier_name,
-        do: String.to_atom("Elixir.MessageBrokerInternal.#{unquote(name)}MessageRetrier")
+        do: String.to_atom("Elixir.MessageBroker.Internal.#{unquote(name)}MessageRetrier")
 
       defp children(config) do
         config =
@@ -46,7 +46,7 @@ defmodule MessageBroker do
       end
 
       defdelegate handle_message(_any, message, context),
-        to: String.to_atom("Elixir.MessageBrokerInternal.#{unquote(name)}Consumer")
+        to: String.to_atom("Elixir.MessageBroker.Internal.#{unquote(name)}Consumer")
     end
   end
 
@@ -79,17 +79,18 @@ defmodule MessageBroker do
       end
 
       defp publisher_name,
-        do: String.to_atom("Elixir.MessageBrokerInternal.#{unquote(name)}Publisher")
+        do: String.to_atom("Elixir.MessageBroker.Internal.#{unquote(name)}Publisher")
 
       defp notifier_name,
-        do: String.to_atom("Elixir.MessageBrokerInternal.#{unquote(name)}Notifier")
+        do: String.to_atom("Elixir.MessageBroker.Internal.#{unquote(name)}Notifier")
 
       def publish_event(event) do
         publisher_name().publish_event(publisher_name(), event)
       end
 
-      defdelegate build_event_payload(event),
-        to: String.to_atom("Elixir.MessageBrokerInternal.#{unquote(name)}Publisher")
+      def build_event_payload(event) do
+        publisher_name().build_event_payload(publisher_name(), event)
+      end
     end
   end
 end

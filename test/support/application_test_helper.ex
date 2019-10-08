@@ -36,7 +36,7 @@ defmodule MessageBroker.ApplicationTestHelper do
     module_name.start_link(config: config)
   end
 
-  def kill_application(pid), do: Process.exit(pid, :normal)
+  def stop_supervisor(pid), do: Supervisor.stop(pid, :normal)
 end
 
 defmodule MyConsumer do
