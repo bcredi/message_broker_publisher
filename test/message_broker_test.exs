@@ -28,7 +28,7 @@ defmodule MessageBrokerTest do
 
   describe "producer" do
     test "initialize" do
-      defmodule MessageBroker.Repo do
+      defmodule MessageBrokerMock.Repo do
         use Ecto.Repo,
           otp_app: :message_broker,
           adapter: Ecto.Adapters.Postgres
@@ -39,7 +39,7 @@ defmodule MessageBrokerTest do
       end
 
       config = %{
-        repo: MessageBroker.Repo,
+        repo: MessageBrokerMock.Repo,
         rabbitmq_user: "guest",
         rabbitmq_password: "guest",
         rabbitmq_host: "message-broker-rabbitmq",
