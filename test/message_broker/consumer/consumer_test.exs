@@ -4,7 +4,6 @@ defmodule MessageBroker.ConsumerTest do
   import MessageBroker.ApplicationTestHelper
   import Mox
 
-  alias AMQP.{Basic, Channel, Connection, Queue}
   alias Broadway.Message
   alias MessageBroker.MessageHandlerMock
 
@@ -15,6 +14,7 @@ defmodule MessageBroker.ConsumerTest do
     @queue "example_queue"
     @exchange "test_exchange"
     @topic "test.test"
+    @retries_count 3
 
     setup do
       {:ok, pid} =
@@ -25,7 +25,7 @@ defmodule MessageBroker.ConsumerTest do
           rabbitmq_exchange: "test_exchange",
           rabbitmq_subscribed_topics: [@topic],
           rabbitmq_consumer_message_handler: &MessageBroker.MessageHandlerMock.handle_message/2,
-          rabbitmq_retries_count: 3
+          rabbitmq_retries_count: @retries_count
         })
 
       {:ok, %{pid: pid}}
@@ -52,7 +52,7 @@ defmodule MessageBroker.ConsumerTest do
       message_payload = "{\"test\": \"#{Faker.Lorem.paragraph(3)}\"}"
 
       {:ok, chan} = open_rabbitmq_connection()
-      :ok = send_rabbitmq_message(chan, @topic, message_payload)
+      :ok = send_rabbitmq_message(chan, @exchange, @queue, @topic, message_payload)
 
       # MessageHandler always fail to trigger retries and dead-letter queue
       expect(MessageHandlerMock, :handle_message, 4, fn payload, _ ->
@@ -71,37 +71,7 @@ defmodule MessageBroker.ConsumerTest do
       assert payload == message_payload
 
       # x-death headers must contain the original fail and 3 subsequent retry fails
-      assert death_count(headers) == 4
-    end
-
-    defp open_rabbitmq_connection do
-      {:ok, conn} =
-        Connection.open(
-          username: "guest",
-          password: "guest",
-          host: "message-broker-rabbitmq",
-          virtual_host: "/"
-        )
-
-      {:ok, _chan} = Channel.open(conn)
-    end
-
-    defp send_rabbitmq_message(channel, topic, payload) do
-      Queue.bind(channel, @queue, @exchange, routing_key: topic)
-      :ok = Basic.publish(channel, @exchange, topic, payload, persistent: true)
-    end
-
-    defp get_rabbitmq_message(channel, queue) do
-      {:ok, _payload, _meta} = AMQP.Basic.get(channel, queue, no_ack: true)
-    end
-
-    defp death_count(headers) do
-      {_, _, tables} = Enum.find(headers, {"x-death", :long, []}, &({"x-death", _, _} = &1))
-
-      Enum.reduce(tables, 0, fn {:table, values}, acc ->
-        {_, _, count} = Enum.find(values, {"count", :long, 0}, &({"count", _, _} = &1))
-        acc + count
-      end)
+      assert message_death_count(headers) == 4
     end
   end
 end

@@ -1,10 +1,80 @@
 defmodule MessageBroker do
-  @moduledoc """
+  @moduledoc ~S"""
   MessageBroker aims to consume and publish events.
+
+  You'll need to create a module, use MessageBroker as :consumer or :publisher,
+  and configure it in your application start_link.
+
+  ## Creating a Consumer
+
+  To create a consumer, you'll need to create a module like this:
+
+      defmodule MyConsumer do
+        use MessageBroker, as: :consumer
+      end
+
+  Then create a message handler for the consumer:
+
+      defmodule MyMessageHandler do
+        def handle_message(message, _message_metadata) do
+          case process_message(message) do
+            {:ok, :message_consumed} -> :ok
+            error -> error
+        end
+      end
+
+  Then add your module in a Supervisor (e.g. in your Application Supervisor) and configure it:
+
+      config = %{
+        rabbitmq_user: "guest",
+        rabbitmq_password: "guest",
+        rabbitmq_host: "localhost",
+        rabbitmq_exchange: "example_exchange",
+        rabbitmq_queue: "example_queue",
+        rabbitmq_subscribed_topics: ["test.topic1", "test.topic2"],
+        rabbitmq_message_handler: &MyMessageHandler.handle_message/2,
+        rabbitmq_broadway_options: [],
+        rabbitmq_retries_count: 3
+      }
+
+      children = [
+        {MyConsumer, [config: config]}
+      ]
+
+      Supervisor.start_link(children, strategy: :one_for_one)
+
+  And now you have a working MessageBroker Consumer.
+
+  ## Creating a Publisher
+
+  To create a publisher, you'll need to create a module like this:
+
+      defmodule MyPublisher do
+        use MessageBroker, as: :publisher
+      end
+
+  Then add your module in a Supervisor (e.g. in your Application Supervisor) and configure it:
+
+      config = %{
+        repo: MyApp.Repo,
+        rabbitmq_user: "guest",
+        rabbitmq_password: "guest",
+        rabbitmq_host: "localhost",
+        rabbitmq_exchange: "example_exchange"
+      }
+
+      children = [
+        {MyPublisher, [config: config]}
+      ]
+
+      Supervisor.start_link(children, strategy: :one_for_one)
   """
 
-  defmacro __using__(as: consumer_or_publisher, name: name)
-           when consumer_or_publisher in [:consumer, :publisher] and is_binary(name) do
+  defmacro __using__(as: consumer_or_publisher)
+           when consumer_or_publisher in [:consumer, :publisher] do
+    %Macro.Env{module: name} = __CALLER__
+    name = String.replace(to_string(name), ".", "")
+
     case consumer_or_publisher do
       :consumer -> consumer_quote(name)
       :publisher -> publisher_quote(name)
@@ -136,9 +206,9 @@ defmodule MessageBroker.PublisherConfig do
         }
 
   defstruct [
-    :repo,
     :publisher_name,
     :notifier_name,
+    :repo,
     rabbitmq_user: "guest",
     rabbitmq_password: "guest",
     rabbitmq_host: "localhost",
