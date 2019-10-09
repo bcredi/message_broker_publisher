@@ -45,8 +45,7 @@ defmodule MessageBroker do
         [{MessageRetrier, consumer_config}, {Consumer, consumer_config}]
       end
 
-      defdelegate handle_message(_any, message, context),
-        to: String.to_atom("Elixir.MessageBroker.Internal.#{unquote(name)}Consumer")
+      defdelegate handle_message(_any, message, context), to: Consumer
     end
   end
 
@@ -84,13 +83,9 @@ defmodule MessageBroker do
       defp notifier_name,
         do: String.to_atom("Elixir.MessageBroker.Internal.#{unquote(name)}Notifier")
 
-      def publish_event(event) do
-        publisher_name().publish_event(publisher_name(), event)
-      end
+      def publish_event(event), do: Publisher.publish_event(publisher_name(), event)
 
-      def build_event_payload(event) do
-        publisher_name().build_event_payload(publisher_name(), event)
-      end
+      defdelegate build_event_payload(event), to: Publisher
     end
   end
 end

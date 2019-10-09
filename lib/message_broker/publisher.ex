@@ -57,6 +57,7 @@ defmodule MessageBroker.Publisher do
       "{\"event\":\"my_event\",\"payload\":{\"id\":\"123\"},\"timestamp\":\"2019-09-25T19:54:20.464057Z\"}"
 
   """
+  @callback build_event_payload(Event.t()) :: String.t()
   def build_event_payload(%Event{event_name: topic, payload: payload}) do
     event = %{
       event: topic,

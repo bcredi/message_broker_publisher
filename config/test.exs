@@ -1,5 +1,7 @@
 import Config
 
+config :logger, handle_otp_reports: false
+
 config :message_broker, ecto_repos: [MessageBroker.Repo]
 
 config :message_broker, MessageBroker.Repo,
