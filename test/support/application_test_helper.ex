@@ -2,6 +2,9 @@
 defmodule MessageBroker.ApplicationTestHelper do
   alias AMQP.{Basic, Channel, Connection, Queue}
 
+  def default_exchange, do: "example_exchange"
+  def default_queue, do: "example_queue"
+
   def start_consumer(module_name \\ MyConsumer, custom_config \\ %{}) do
     config = Map.merge(consumer_default_config(), custom_config)
     module_name.start_link(config: config)
@@ -12,8 +15,8 @@ defmodule MessageBroker.ApplicationTestHelper do
       rabbitmq_user: "guest",
       rabbitmq_password: "guest",
       rabbitmq_host: "message-broker-rabbitmq",
-      rabbitmq_exchange: "example_exchange",
-      rabbitmq_queue: "example_queue",
+      rabbitmq_exchange: default_exchange(),
+      rabbitmq_queue: default_queue(),
       rabbitmq_subscribed_topics: ["test.test"],
       rabbitmq_message_handler: &MessageBroker.MessageHandlerMock.handle_message/2,
       rabbitmq_broadway_options: [],
@@ -32,7 +35,7 @@ defmodule MessageBroker.ApplicationTestHelper do
       rabbitmq_user: "guest",
       rabbitmq_password: "guest",
       rabbitmq_host: "message-broker-rabbitmq",
-      rabbitmq_exchange: "example_exchange"
+      rabbitmq_exchange: default_exchange()
     }
   end
 
