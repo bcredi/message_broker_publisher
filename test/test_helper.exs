@@ -1,4 +1,5 @@
 ExUnit.start()
+Faker.start()
 
 {:ok, _pid} =
   Supervisor.start_link([MessageBroker.Repo],

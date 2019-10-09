@@ -1,6 +1,6 @@
 defmodule MessageBroker.Consumer.MessageRetrier do
   @moduledoc """
-  Retries failed messages in exponential time until rejects it.
+  Retries failed messages in exponential time until passes max retries count.
   """
 
   use MessageBroker.RabbitmqServer, as: "MessageRetrier", name_key: :message_retrier_name
@@ -23,9 +23,23 @@ defmodule MessageBroker.Consumer.MessageRetrier do
   end
 
   @doc """
-  Retry a message if possible.
+  Retry a message if retry count hasn't passed a limit.
+
+  ## Examples
+
+    iex> retry_message(SomeMessageRetrier, %Message{}, [{"x-death", :long, []}, ...])
+    {:ok, :message_retried}
+
+    iex> retry_message(SomeMessageRetrier, %Message{}, [{"x-death", :long, []}, ...])
+    {:error, :message_retries_expired}
+
   """
-  @callback retry_message(map()) :: {:ok, :message_retried} | {:error, :message_retries_expired}
+  @callback retry_message(
+              atom | pid | {atom, any} | {:via, atom, any},
+              Broadway.Message.t(),
+              list()
+            ) ::
+              {:ok, :message_retried} | {:error, :message_retries_expired} | {:error, any()}
   def retry_message(module, message, headers) do
     case GenServer.call(module, {:retry, message, headers}) do
       :ok -> {:ok, :message_retried}
@@ -36,6 +50,11 @@ defmodule MessageBroker.Consumer.MessageRetrier do
   @impl GenServer
   def handle_call({:retry, message, headers}, _from, [config: config, channel: channel] = state) do
     {:reply, handle_failed_message(message, headers, channel, config), state}
+  end
+
+  defp handle_failed_message(_message, _headers, _channel, %{rabbitmq_retries_count: count})
+       when count < 1 do
+    {:error, :message_retries_expired}
   end
 
   defp handle_failed_message(message, headers, channel, %{

@@ -12,14 +12,13 @@ defmodule MessageBroker.Publisher.Notifier do
   alias Ecto.Multi
   alias Postgrex.Notifications
 
-  alias MessageBroker.Publisher
   alias MessageBroker.Publisher.Event
 
   require Logger
 
   @channel "event_created"
 
-  def start_link(%{notifier_name: name} = config) do
+  def start_link(%{notifier_name: name, publisher_name: _, repo: _} = config) do
     GenServer.start_link(__MODULE__, config, name: name)
   end
 

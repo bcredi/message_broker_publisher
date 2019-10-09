@@ -56,10 +56,11 @@ defmodule MessageBroker.Consumer do
   @impl true
   def handle_message(
         _,
-        %Message{data: data, metadata: %{headers: headers} = metadata} = message,
+        %Message{data: data, metadata: metadata} = message,
         %{message_handler: message_handler, message_retrier_name: message_retrier_name}
       )
       when is_function(message_handler) do
+    headers = Map.get(metadata, :headers)
     decoded_data = Jason.decode!(data)
 
     case message_handler.(decoded_data, metadata) do

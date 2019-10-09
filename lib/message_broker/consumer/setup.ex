@@ -1,8 +1,8 @@
 defmodule MessageBroker.Consumer.Setup do
   @moduledoc """
-  Initial setup for MessageBrokerConsumer.
+  Initial setup for Consumer.
 
-  Adds default exchange and queues for this consumer.
+  Adds default exchange, queues and its topics for this consumer.
   """
 
   use AMQP
@@ -10,7 +10,7 @@ defmodule MessageBroker.Consumer.Setup do
   require Logger
 
   @doc """
-  Initialize MessageBrokerConsumer in RabbitMQ server.
+  Initialize Consumer in RabbitMQ server.
   """
   def init(
         %{

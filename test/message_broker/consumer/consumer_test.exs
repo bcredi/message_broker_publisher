@@ -12,6 +12,10 @@ defmodule MessageBroker.ConsumerTest do
   setup :set_mox_global
 
   describe "#handle_message/3" do
+    @queue "example_queue"
+    @exchange "test_exchange"
+    @topic "test.test"
+
     setup do
       {:ok, pid} =
         start_consumer(MyConsumer, %{
@@ -19,7 +23,7 @@ defmodule MessageBroker.ConsumerTest do
           rabbitmq_user: "guest",
           rabbitmq_password: "guest",
           rabbitmq_exchange: "test_exchange",
-          rabbitmq_subscribed_topics: ["test.test"],
+          rabbitmq_subscribed_topics: [@topic],
           rabbitmq_consumer_message_handler: &MessageBroker.MessageHandlerMock.handle_message/2,
           rabbitmq_retries_count: 3
         })
@@ -27,10 +31,7 @@ defmodule MessageBroker.ConsumerTest do
       {:ok, %{pid: pid}}
     end
 
-    @queue "example_queue"
-    @exchange "test_exchange"
-
-    test "sucessful consume an event", %{pid: pid} do
+    test "sucessfully consume an event", %{pid: pid} do
       json = "{\"key\":\"value\"}"
       metadata = %{headers: %{"key" => "value"}}
       message = %Message{data: json, metadata: metadata, acknowledger: nil}
@@ -48,13 +49,16 @@ defmodule MessageBroker.ConsumerTest do
     end
 
     test "fail to consume an event and retries until dead-letter", %{pid: pid} do
-      message_payload = "{}"
+      message_payload = "{\"test\": \"#{Faker.Lorem.paragraph(3)}\"}"
 
       {:ok, chan} = open_rabbitmq_connection()
-      :ok = send_rabbitmq_message(chan, "test.test", message_payload)
+      :ok = send_rabbitmq_message(chan, @topic, message_payload)
 
       # MessageHandler always fail to trigger retries and dead-letter queue
-      expect(MessageHandlerMock, :handle_message, 4, fn _, _ -> {:error, "some error"} end)
+      expect(MessageHandlerMock, :handle_message, 4, fn payload, _ ->
+        assert payload == Jason.decode!(message_payload)
+        {:error, "some error"}
+      end)
 
       # Wait exponential time for 3 retry counts (1s + 4s + 9s =~ 15s)
       Process.sleep(15_000)
@@ -88,14 +92,14 @@ defmodule MessageBroker.ConsumerTest do
     end
 
     defp get_rabbitmq_message(channel, queue) do
-      {:ok, _payload, _meta} = AMQP.Basic.get(channel, queue)
+      {:ok, _payload, _meta} = AMQP.Basic.get(channel, queue, no_ack: true)
     end
 
     defp death_count(headers) do
-      {_xdeath, _, retries} = Enum.find(headers, fn {header, _, _} -> header == "x-death" end)
+      {_, _, tables} = Enum.find(headers, {"x-death", :long, []}, &({"x-death", _, _} = &1))
 
-      Enum.reduce(retries, 0, fn {:table, fields}, acc ->
-        {"count", _, count} = Enum.find(fields, fn {field, _t, _v} -> field == "count" end)
+      Enum.reduce(tables, 0, fn {:table, values}, acc ->
+        {_, _, count} = Enum.find(values, {"count", :long, 0}, &({"count", _, _} = &1))
         acc + count
       end)
     end

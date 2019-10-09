@@ -30,7 +30,8 @@ defmodule MessageBroker.MixProject do
       {:amqp, "~> 1.3"},
       {:credo, "~> 1.1.0", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.0.0-rc.7", only: [:dev], runtime: false},
-      {:mox, "~> 0.5", only: :test}
+      {:mox, "~> 0.5", only: :test},
+      {:faker, "~> 0.13", only: :test}
     ]
   end
 
