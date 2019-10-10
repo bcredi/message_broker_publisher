@@ -75,33 +75,33 @@ defmodule MessageBroker.Publisher.EventBuilder do
 
       """
       @spec new(struct | map) :: Ecto.Changeset.t()
-      def new(%_{} = struct), do: build_event_from_struct(struct)
-      def new(%{} = map), do: build_event_from_map(map)
+      def new(%{} = payload), do: build_event(payload)
 
-      defp build_event_from_struct(%_{} = schema) do
-        payload =
-          schema
-          |> process_payload()
-          |> Map.from_struct()
-
-        attrs = %{
-          event_name: unquote(event_name),
-          payload: struct(__MODULE__, payload)
-        }
-
-        Event.changeset(%Event{}, attrs)
-      end
-
-      defp build_event_from_map(%{} = map) do
-        attrs = %{
-          event_name: unquote(event_name),
-          payload: struct(__MODULE__, process_payload(map))
-        }
-
-        Event.changeset(%Event{}, attrs)
+      defp build_event(payload) do
+        payload
+        |> process_payload()
+        |> do_build_event()
       end
 
       defp process_payload(payload), do: payload
+
+      defp do_build_event(%_{} = schema) do
+        attrs = %{
+          event_name: unquote(event_name),
+          payload: struct(__MODULE__, Map.from_struct(schema))
+        }
+
+        Event.changeset(%Event{}, attrs)
+      end
+
+      defp do_build_event(%{} = map) do
+        attrs = %{
+          event_name: unquote(event_name),
+          payload: struct(__MODULE__, map)
+        }
+
+        Event.changeset(%Event{}, attrs)
+      end
 
       defoverridable process_payload: 1
     end
