@@ -69,9 +69,14 @@ defmodule MessageBroker.Publisher.EventBuilder do
       def new(%{} = map), do: build_event_from_map(map)
 
       defp build_event_from_struct(%_{} = schema) do
+        payload =
+          schema
+          |> process_payload()
+          |> Map.from_struct()
+
         attrs = %{
           event_name: unquote(event_name),
-          payload: struct(__MODULE__, Map.from_struct(schema))
+          payload: struct(__MODULE__, payload)
         }
 
         Event.changeset(%Event{}, attrs)
@@ -80,11 +85,15 @@ defmodule MessageBroker.Publisher.EventBuilder do
       defp build_event_from_map(%{} = map) do
         attrs = %{
           event_name: unquote(event_name),
-          payload: struct(__MODULE__, map)
+          payload: struct(__MODULE__, process_payload(map))
         }
 
         Event.changeset(%Event{}, attrs)
       end
+
+      defp process_payload(payload), do: payload
+
+      defoverridable new: 0, build_event_from_map: 0, process_payload: 1
     end
   end
 end
