@@ -14,6 +14,16 @@ defmodule MessageBroker.Publisher.EventBuilder do
         defstruct [:key1, :key2]
       end
 
+      defmodule MyAnotherEvent do
+        use MessageBroker.Publisher.EventBuilder, as: "my_another_event"
+
+        defstruct [:key1, :key2, :key3]
+
+        defp process_payload(payload) do
+          Map.put(payload, :key3, DateTime.now("Etc/UTC"))
+        end
+      end
+
   After define the `MyEvent` module, we can build events using maps or structs as follow:
 
       iex> MyEvent.new(%SomeStruct{key1: "1", key2: "2"})
@@ -93,7 +103,7 @@ defmodule MessageBroker.Publisher.EventBuilder do
 
       defp process_payload(payload), do: payload
 
-      defoverridable new: 0, build_event_from_map: 0, process_payload: 1
+      defoverridable process_payload: 1
     end
   end
 end
