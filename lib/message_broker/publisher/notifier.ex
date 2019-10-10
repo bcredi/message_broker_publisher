@@ -12,6 +12,7 @@ defmodule MessageBroker.Publisher.Notifier do
   alias Ecto.Multi
   alias Postgrex.Notifications
 
+  alias MessageBroker.Publisher
   alias MessageBroker.Publisher.Event
 
   require Logger
@@ -50,7 +51,7 @@ defmodule MessageBroker.Publisher.Notifier do
       Multi.new()
       |> Multi.delete(:delete_event, event)
       |> Multi.run(:publish_message, fn _, _ ->
-        publisher_name.publish_event(publisher_name, event)
+        Publisher.publish_event(publisher_name, event)
       end)
       |> repo.transaction()
       |> case do
