@@ -13,6 +13,7 @@ defmodule MessageBroker.Publisher.Migrations do
       add(:id, :binary_id, primary_key: true)
       add(:event_name, :string)
       add(:payload, :map)
+      add(:status, :map)
 
       timestamps()
     end

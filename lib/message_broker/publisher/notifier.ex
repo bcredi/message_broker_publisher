@@ -58,8 +58,8 @@ defmodule MessageBroker.Publisher.Notifier do
         {:ok, _changes} ->
           {:noreply, :event_handled}
 
-        {:error, _, _, _} ->
-          mark_as_error!(repo, event)
+        {:error, action, error, _} ->
+          mark_as_error!(repo, event, action, error)
           {:noreply, :event_not_handled}
       end
     else
@@ -72,5 +72,19 @@ defmodule MessageBroker.Publisher.Notifier do
   end
 
   defp get_event!(repo, id), do: repo.get!(Event, id)
-  defp mark_as_error!(repo, event), do: repo.update!(event, status: "error")
+
+  defp mark_as_error!(repo, %{status: status} = event, action, error) do
+    {:ok, now} = DateTime.now("Etc/UTC")
+
+    new_status =
+      Map.put(status, to_string(now), %{
+        "type" => "error",
+        "action" => to_string(action),
+        "message" => :erlang.term_to_binary(error)
+      })
+
+    event
+    |> Ecto.Changeset.change(status: new_status)
+    |> repo.update!()
+  end
 end

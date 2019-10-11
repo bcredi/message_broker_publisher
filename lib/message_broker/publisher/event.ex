@@ -19,6 +19,7 @@ defmodule MessageBroker.Publisher.Event do
   schema "message_broker_events" do
     field(:event_name, :string)
     field(:payload, :map)
+    field(:status, :map)
 
     timestamps()
   end
