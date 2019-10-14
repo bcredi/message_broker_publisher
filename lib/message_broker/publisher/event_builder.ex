@@ -11,7 +11,19 @@ defmodule MessageBroker.Publisher.EventBuilder do
       defmodule MyEvent do
         use MessageBroker.Publisher.EventBuilder, as: "my_event"
 
+        @derive Jason.Encoder
         defstruct [:key1, :key2]
+      end
+
+      defmodule MyAnotherEvent do
+        use MessageBroker.Publisher.EventBuilder, as: "my_another_event"
+
+        @derive Jason.Encoder
+        defstruct [:key1, :key2, :key3]
+
+        defp process_payload(payload) do
+          Map.put(payload, :key3, DateTime.now("Etc/UTC"))
+        end
       end
 
   After define the `MyEvent` module, we can build events using maps or structs as follow:
@@ -65,10 +77,17 @@ defmodule MessageBroker.Publisher.EventBuilder do
 
       """
       @spec new(struct | map) :: Ecto.Changeset.t()
-      def new(%_{} = struct), do: build_event_from_struct(struct)
-      def new(%{} = map), do: build_event_from_map(map)
+      def new(%{} = payload), do: build_event(payload)
 
-      defp build_event_from_struct(%_{} = schema) do
+      defp build_event(payload) do
+        payload
+        |> process_payload()
+        |> do_build_event()
+      end
+
+      defp process_payload(payload), do: payload
+
+      defp do_build_event(%_{} = schema) do
         attrs = %{
           event_name: unquote(event_name),
           payload: struct(__MODULE__, Map.from_struct(schema))
@@ -77,7 +96,7 @@ defmodule MessageBroker.Publisher.EventBuilder do
         Event.changeset(%Event{}, attrs)
       end
 
-      defp build_event_from_map(%{} = map) do
+      defp do_build_event(%{} = map) do
         attrs = %{
           event_name: unquote(event_name),
           payload: struct(__MODULE__, map)
@@ -85,6 +104,8 @@ defmodule MessageBroker.Publisher.EventBuilder do
 
         Event.changeset(%Event{}, attrs)
       end
+
+      defoverridable process_payload: 1
     end
   end
 end

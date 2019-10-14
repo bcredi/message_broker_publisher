@@ -196,9 +196,9 @@ defmodule MessageBroker.PublisherConfig do
   @moduledoc false
 
   @type t :: %__MODULE__{
-          repo: Ecto.Repo.t(),
           publisher_name: atom(),
           notifier_name: atom(),
+          repo: Ecto.Repo.t(),
           rabbitmq_user: String.t(),
           rabbitmq_password: String.t(),
           rabbitmq_host: String.t(),

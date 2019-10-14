@@ -1,5 +1,5 @@
 defmodule MessageBrokerTest do
-  use ExUnit.Case
+  use MessageBroker.DataCase
 
   import MessageBroker.ApplicationTestHelper
 

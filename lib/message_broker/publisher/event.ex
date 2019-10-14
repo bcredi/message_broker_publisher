@@ -8,7 +8,8 @@ defmodule MessageBroker.Publisher.Event do
   @type t :: %__MODULE__{
           id: uuid(),
           event_name: String.t(),
-          payload: map()
+          payload: map(),
+          status: map()
         }
 
   use Ecto.Schema
@@ -19,6 +20,7 @@ defmodule MessageBroker.Publisher.Event do
   schema "message_broker_events" do
     field(:event_name, :string)
     field(:payload, :map)
+    field(:status, :map)
 
     timestamps()
   end
