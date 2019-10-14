@@ -40,10 +40,10 @@ defmodule MessageBroker.Publisher.Notifier do
   end
 
   @impl GenServer
-  def handle_info({:notification, _pid, _ref, @channel, payload}, %{
-        publisher_name: publisher_name,
-        repo: repo
-      }) do
+  def handle_info(
+        {:notification, _pid, _ref, @channel, payload},
+        %{publisher_name: publisher_name, repo: repo} = state
+      ) do
     with {:ok, %{"record" => %{"id" => id}}} <- Jason.decode(payload),
          event <- get_event!(repo, id) do
       Logger.info("Processing message broker event: #{inspect(event)}")
@@ -56,19 +56,19 @@ defmodule MessageBroker.Publisher.Notifier do
       |> repo.transaction()
       |> case do
         {:ok, _changes} ->
-          {:noreply, :event_handled}
+          {:noreply, state}
 
         {:error, action, error, _} ->
           mark_as_error!(repo, event, action, error)
-          {:noreply, :event_not_handled}
+          {:noreply, state}
       end
     else
       error -> {:stop, error, []}
     end
   end
 
-  def handle_info(_, _) do
-    {:noreply, :event_received}
+  def handle_info(_, state) do
+    {:noreply, state}
   end
 
   defp get_event!(repo, id), do: repo.get!(Event, id)

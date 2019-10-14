@@ -28,7 +28,7 @@ defmodule MessageBroker.Publisher.Migrations do
             'record', row_to_json(NEW)
           )::text
         );
-        RETURN NEW;
+        RETURN NULL;
       END;
       $$ LANGUAGE plpgsql;
     """)
