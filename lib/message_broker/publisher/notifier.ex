@@ -36,19 +36,32 @@ defmodule MessageBroker.Publisher.Notifier do
   @impl GenServer
   def init(%{repo: repo} = config) do
     case listen(repo, @channel) do
-      {:ok, _pid, _ref} -> {:ok, config}
-      error -> {:stop, error}
+      {:ok, _pid, _ref} ->
+        {:ok, config, {:continue, :process_available_events}}
+
+      error ->
+        {:stop, error}
     end
+  end
+
+  @impl GenServer
+  def handle_continue(:process_available_events, %{publisher_name: _, repo: repo} = state) do
+    Event
+    |> where([e], is_nil(e.status))
+    |> repo.all()
+    |> Enum.each(&process_event(&1.id, state))
+
+    {:noreply, state}
   end
 
   @impl GenServer
   def handle_info(
         {:notification, _pid, _ref, @channel, payload},
-        %{publisher_name: publisher_name, repo: repo} = state
+        %{publisher_name: _, repo: _} = state
       ) do
     case Jason.decode(payload) do
       {:ok, %{"record" => %{"id" => id}}} ->
-        process_event(id, repo, publisher_name, state)
+        process_event(id, state)
 
       error ->
         {:stop, error, []}
@@ -59,16 +72,16 @@ defmodule MessageBroker.Publisher.Notifier do
     {:noreply, state}
   end
 
-  defp process_event(id, repo, publisher_name, state) do
+  defp process_event(id, %{publisher_name: publisher_name, repo: repo} = state) do
     Multi.new()
     |> Multi.run(:event, fn _, _ -> get_event(repo, id) end)
     |> Multi.delete(:delete_event, fn %{event: event} -> event end)
     |> Multi.run(:publish_message, fn _, %{event: event} ->
-      Logger.info("Processing message broker event: #{inspect(event)}")
+      Logger.debug("Processing message broker event: #{inspect(event)}")
       Publisher.publish_event(publisher_name, event)
     end)
     |> repo.transaction()
-    |> process_event_result(id, repo, state)
+    |> process_event_result(id, state)
   end
 
   defp get_event(repo, id) do
@@ -91,7 +104,7 @@ defmodule MessageBroker.Publisher.Notifier do
       error_code
   end
 
-  def process_event_result(result, id, repo, state) do
+  defp process_event_result(result, id, %{repo: repo} = state) do
     case result do
       {:ok, _changes} ->
         {:noreply, state}

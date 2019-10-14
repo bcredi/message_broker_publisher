@@ -3,7 +3,7 @@ version: '3.5'
 services:
   test:
     image: elixir:1.9-alpine
-    command: mix do local.hex --force, local.rebar --force, deps.get, ecto.create, ecto.migrate --migrations-path lib/message_broker/publisher, test, credo --strict
+    command: mix do local.hex --force, local.rebar --force, deps.get, ecto.create, ecto.migrate --migrations-path test/support/migrations, test, credo --strict
     environment:
       - MIX_ENV=test
       - PG_HOST=message-broker-db
