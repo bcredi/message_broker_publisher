@@ -61,14 +61,7 @@ defmodule MessageBroker.Publisher.Notifier do
 
   defp process_event(id, repo, publisher_name, state) do
     Multi.new()
-    |> Multi.run(:event, fn _, _ ->
-      case get_event!(repo, id) do
-        nil -> {:error, :event_not_found}
-        :lock_not_available -> {:error, :event_locked}
-        %Event{} = event -> {:ok, event}
-        error -> {:error, error}
-      end
-    end)
+    |> Multi.run(:event, fn _, _ -> get_event(repo, id) end)
     |> Multi.delete(:delete_event, fn %{event: event} -> event end)
     |> Multi.run(:publish_message, fn _, %{event: event} ->
       Logger.info("Processing message broker event: #{inspect(event)}")
@@ -78,7 +71,16 @@ defmodule MessageBroker.Publisher.Notifier do
     |> process_event_result(id, repo, state)
   end
 
-  defp get_event!(repo, id) do
+  defp get_event(repo, id) do
+    case do_get_event(repo, id) do
+      nil -> {:error, :event_not_found}
+      :lock_not_available -> {:error, :event_locked}
+      %Event{} = event -> {:ok, event}
+      error -> {:error, error}
+    end
+  end
+
+  defp do_get_event(repo, id) do
     Event
     |> where([e], e.id == ^id)
     |> lock("FOR UPDATE NOWAIT")
