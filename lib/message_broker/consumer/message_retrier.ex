@@ -41,7 +41,7 @@ defmodule MessageBroker.Consumer.MessageRetrier do
             ) ::
               {:ok, :message_retried} | {:error, :message_retries_expired} | {:error, any()}
   def retry_message(module, message, headers) do
-    case GenServer.call(module, {:retry, message, headers}) do
+    case GenServer.call(module, {:retry, message, headers}, 15_000) do
       :ok -> {:ok, :message_retried}
       error -> error
     end
