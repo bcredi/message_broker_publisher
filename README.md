@@ -20,7 +20,7 @@ MessageBroker can be installed by adding `message_broker` to your list of depend
 ```elixir
 def deps do
   [
-    {:message_broker, git: "https://github.com/bcredi/message_broker.git", tag: "v0.1"}
+    {:message_broker, git: "https://github.com/bcredi/message_broker.git", tag: "v0.1.1"}
   ]
 end
 ```
