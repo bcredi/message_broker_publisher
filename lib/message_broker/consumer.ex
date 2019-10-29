@@ -62,9 +62,13 @@ defmodule MessageBroker.Consumer do
       when is_function(message_handler) do
     headers = Map.get(metadata, :headers)
 
-    case message_handler.(decode_data(data), metadata) do
-      :ok -> message
-      {:ok, _} -> message
+    try do
+      case message_handler.(decode_data(data), metadata) do
+        :ok -> message
+        {:ok, _} -> message
+        error -> handle_failed_message(message, error, data, headers, message_retrier_name)
+      end
+    rescue
       error -> handle_failed_message(message, error, data, headers, message_retrier_name)
     end
   end
