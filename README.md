@@ -76,7 +76,7 @@ end
 ```
 
 Then you must define a function that receives the events consumed.
-If the event is successfully consumed you must return `:ok`, anything else is an error.
+If the event is successfully consumed you must return `:ok` or `{:ok, any()}`, anything else is an error.
 
 ```elixir
 defmodule MyApp.MessageHandler do
@@ -84,7 +84,7 @@ defmodule MyApp.MessageHandler do
   Consumer MessageHandler.
   """
 
-  @callback handle_message(map(), map()) :: :ok | any()
+  @callback handle_message(map(), map()) :: :ok | {:ok, any()} | any()
   def handle_message(%{"event" => name, "payload" => payload} = event, _metadata) do
     case name do
       "some_app.some_schema.action" ->

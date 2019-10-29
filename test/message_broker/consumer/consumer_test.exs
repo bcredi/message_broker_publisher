@@ -45,6 +45,14 @@ defmodule MessageBroker.ConsumerTest do
                  message_retrier_name: MessageBroker.Internal.SomeMessageRetrier
                })
 
+      expect(MessageHandlerMock, :handle_message, 1, fn ^decoded_json, ^metadata -> {:ok, %{}} end)
+
+      assert ^message =
+               MyConsumer.handle_message(nil, message, %{
+                 message_handler: &MessageBroker.MessageHandlerMock.handle_message/2,
+                 message_retrier_name: MessageBroker.Internal.SomeMessageRetrier
+               })
+
       stop_supervisor(pid)
     end
 

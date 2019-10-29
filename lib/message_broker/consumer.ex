@@ -64,6 +64,7 @@ defmodule MessageBroker.Consumer do
 
     case message_handler.(decode_data(data), metadata) do
       :ok -> message
+      {:ok, _} -> message
       error -> handle_failed_message(message, error, data, headers, message_retrier_name)
     end
   end
