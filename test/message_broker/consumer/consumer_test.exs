@@ -45,6 +45,14 @@ defmodule MessageBroker.ConsumerTest do
                  message_retrier_name: MessageBroker.Internal.SomeMessageRetrier
                })
 
+      expect(MessageHandlerMock, :handle_message, 1, fn ^decoded_json, ^metadata -> {:ok, %{}} end)
+
+      assert ^message =
+               MyConsumer.handle_message(nil, message, %{
+                 message_handler: &MessageBroker.MessageHandlerMock.handle_message/2,
+                 message_retrier_name: MessageBroker.Internal.SomeMessageRetrier
+               })
+
       stop_supervisor(pid)
     end
 
@@ -55,9 +63,14 @@ defmodule MessageBroker.ConsumerTest do
       :ok = send_rabbitmq_message(chan, @exchange, @queue, @topic, message_payload)
 
       # MessageHandler always fail to trigger retries and dead-letter queue
-      expect(MessageHandlerMock, :handle_message, 4, fn payload, _ ->
+      expect(MessageHandlerMock, :handle_message, 2, fn payload, _ ->
         assert payload == Jason.decode!(message_payload)
         {:error, "some error"}
+      end)
+
+      expect(MessageHandlerMock, :handle_message, 2, fn payload, _ ->
+        assert payload == Jason.decode!(message_payload)
+        raise("some error")
       end)
 
       # Wait exponential time for 3 retry counts (1s + 4s + 9s =~ 15s)
