@@ -8,6 +8,8 @@ defmodule MessageBroker.Consumer do
 
   use Broadway
 
+  require Logger
+
   alias Broadway.Message
   alias MessageBroker.Consumer.{MessageRetrier, Setup}
 
@@ -64,12 +66,18 @@ defmodule MessageBroker.Consumer do
 
     try do
       case message_handler.(decode_data(data), metadata) do
-        :ok -> message
-        {:ok, _} -> message
-        error -> handle_failed_message(message, error, data, headers, message_retrier_name)
+        :ok ->
+          message
+
+        {:ok, _} ->
+          message
+
+        error ->
+          handle_failed_message(message, {:regular, error}, data, headers, message_retrier_name)
       end
     rescue
-      error -> handle_failed_message(message, error, data, headers, message_retrier_name)
+      error ->
+        handle_failed_message(message, {:exception, error}, data, headers, message_retrier_name)
     end
   end
 
@@ -81,9 +89,29 @@ defmodule MessageBroker.Consumer do
   end
 
   defp handle_failed_message(message, error, data, headers, message_retrier_name) do
+    handle_error_message(error, message_retrier_name)
+
     case MessageRetrier.retry_message(message_retrier_name, data, headers) do
       {:ok, :message_retried} -> message
       {:error, :message_retries_expired} -> Message.failed(message, error)
     end
+  end
+
+  defp handle_error_message(error, message_retrier_name)
+  defp handle_error_message({:regular, _error}, _name), do: :nothing
+
+  defp handle_error_message({:exception, error}, name) do
+    module_name =
+      name
+      |> to_string()
+      |> String.split("Elixir")
+      |> List.last()
+      |> String.replace_suffix("MessageRetrier", "")
+
+    Logger.error(
+      "#{module_name} defined #handle_message/2 raised an exception:\n#{
+        :erlang.term_to_binary(error)
+      }"
+    )
   end
 end
