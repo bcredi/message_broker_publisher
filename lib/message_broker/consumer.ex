@@ -110,7 +110,7 @@ defmodule MessageBroker.Consumer do
 
     Logger.error(
       "#{module_name} defined #handle_message/2 raised an exception:\n#{
-        :erlang.term_to_binary(error)
+        inspect(error, limit: :infinity)
       }"
     )
   end

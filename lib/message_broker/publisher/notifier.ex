@@ -133,7 +133,7 @@ defmodule MessageBroker.Publisher.Notifier do
       Map.put(status, to_string(now), %{
         "type" => "error",
         "action" => to_string(action),
-        "message" => :erlang.term_to_binary(error)
+        "message" => inspect(error, limit: :infinity)
       })
 
     event
